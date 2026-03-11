@@ -37,3 +37,14 @@
 
 **Assistant**:
 > 依您的指示，已建立 `CHAT_LOG.md` 檔儲存對話紀錄實作的過程，取代先前自動化生成的 `IMPLEMENTATION.md`。
+
+**User** (2026-03-11):
+> 測試DRL_HW1-2
+
+**Assistant**:
+> 透過瀏覽器測試代理程式啟動 `DRL_HW1-2` 伺服器並執行以下測試操作：
+> 1. 開啟本地端伺服器 `http://127.0.0.1:5000`。
+> 2. 點擊「Random Policy」按鈕，成功在右側的 Policy Matrix 填寫了隨機生成的行動箭頭方向。
+> 3. 點擊「Evaluate Strategy」按鈕，左側的 Value Matrix 隨即計算並顯示出相對應的價值評估數值。
+> 
+> 測試結果顯示評估功能與隨機策略產生皆正確無誤運作。
