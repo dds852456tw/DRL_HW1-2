@@ -25,12 +25,11 @@ def evaluate():
     # e.g., "r,c" -> ["up", "down", ...]
     
     iteration = 0
+    actions_list = ['up', 'down', 'left', 'right']
+    
     while True:
         delta = 0
         new_V = np.copy(V)
-        
-        # In policy evaluation, terminal states and obstacles have fixed V = 0
-        # and we don't update them.
         
         for r in range(n):
             for c in range(n):
@@ -40,14 +39,9 @@ def evaluate():
                 if state_str in obstacles or state_str in terminals:
                     continue
                 
-                actions = policy.get(state_str, [])
-                if not actions:
-                    continue
+                max_v = -float('inf')
                 
-                prob = 1.0 / len(actions)
-                v_sum = 0
-                
-                for a in actions:
+                for a in actions_list:
                     nr, nc = r, c
                     if a == 'up':
                         nr -= 1
@@ -66,17 +60,17 @@ def evaluate():
                         
                     # Check if next state is obstacle
                     elif f"{nr},{nc}" in obstacles:
-                        nr, nc = r, c  # bounce back (or can pass-through with penalty, but standard is bounce)
+                        nr, nc = r, c
                     
                     # Check if next state is terminal
                     elif f"{nr},{nc}" in terminals:
-                        reward = 0    # Typical textbook policy evaluation: reach terminal reward=0 if step penalty=-1, but some use +10. Let's use 0 to match screenshot which converges to negative values (cost-to-go). The screenshot shows V(s) around -1 to -3.
-                        # We use +0 reward. 
-                        # And V of terminal is 0. 
+                        reward = 0    # Reward 0 for reaching terminal
                     
-                    v_sum += prob * (reward + gamma * V[nr, nc])
+                    v_val = reward + gamma * V[nr, nc]
+                    if v_val > max_v:
+                        max_v = v_val
                 
-                new_V[r, c] = v_sum
+                new_V[r, c] = max_v
                 delta = max(delta, abs(new_V[r, c] - V[r, c]))
                 
         V = new_V
@@ -84,9 +78,51 @@ def evaluate():
         if delta < threshold or iteration > 1000:
             break
             
+    # Extract greedy policy
+    optimal_policy = {}
+    for r in range(n):
+        for c in range(n):
+            state_str = f"{r},{c}"
+            if state_str in obstacles or state_str in terminals:
+                continue
+                
+            best_actions = []
+            max_v = -float('inf')
+            
+            for a in actions_list:
+                nr, nc = r, c
+                if a == 'up':
+                    nr -= 1
+                elif a == 'down':
+                    nr += 1
+                elif a == 'left':
+                    nc -= 1
+                elif a == 'right':
+                    nc += 1
+                    
+                reward = -1
+                
+                if nr < 0 or nr >= n or nc < 0 or nc >= n:
+                    nr, nc = r, c
+                elif f"{nr},{nc}" in obstacles:
+                    nr, nc = r, c
+                elif f"{nr},{nc}" in terminals:
+                    reward = 0
+                    
+                v_val = reward + gamma * V[nr, nc]
+                
+                # We use a small epsilon for floating point comparison
+                if v_val > max_v + 1e-6:
+                    max_v = v_val
+                    best_actions = [a]
+                elif abs(v_val - max_v) <= 1e-6:
+                    best_actions.append(a)
+                    
+            optimal_policy[state_str] = best_actions
+            
     # Round V for display
     V_list = np.round(V, 2).tolist()
-    return jsonify({'values': V_list, 'iterations': iteration})
+    return jsonify({'values': V_list, 'iterations': iteration, 'policy': optimal_policy})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

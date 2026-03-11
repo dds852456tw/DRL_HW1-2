@@ -301,6 +301,11 @@
                 const data = await response.json();
 
                 // Update Value grid UI
+                if (data.policy) {
+                    cellPolicies = data.policy;
+                    renderGrids();
+                }
+
                 const vCells = document.getElementById('value-grid').querySelectorAll('.grid-cell');
                 for (let r = 0; r < gridSize; r++) {
                     for (let c = 0; c < gridSize; c++) {
