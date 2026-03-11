@@ -28,6 +28,10 @@ def evaluate():
     while True:
         delta = 0
         new_V = np.copy(V)
+        
+        # In policy evaluation, terminal states and obstacles have fixed V = 0
+        # and we don't update them.
+        
         for r in range(n):
             for c in range(n):
                 state_str = f"{r},{c}"
@@ -59,13 +63,17 @@ def evaluate():
                     # Check physical boundaries
                     if nr < 0 or nr >= n or nc < 0 or nc >= n:
                         nr, nc = r, c  # bounce back
-                        reward = -1
-                    elif f"{nr},{nc}" in obstacles:
-                        nr, nc = r, c  # bounce back
-                        reward = -1
-                    elif f"{nr},{nc}" in terminals:
-                        reward = 10    # positive reward for reaching the goal!
                         
+                    # Check if next state is obstacle
+                    elif f"{nr},{nc}" in obstacles:
+                        nr, nc = r, c  # bounce back (or can pass-through with penalty, but standard is bounce)
+                    
+                    # Check if next state is terminal
+                    elif f"{nr},{nc}" in terminals:
+                        reward = 0    # Typical textbook policy evaluation: reach terminal reward=0 if step penalty=-1, but some use +10. Let's use 0 to match screenshot which converges to negative values (cost-to-go). The screenshot shows V(s) around -1 to -3.
+                        # We use +0 reward. 
+                        # And V of terminal is 0. 
+                    
                     v_sum += prob * (reward + gamma * V[nr, nc])
                 
                 new_V[r, c] = v_sum
