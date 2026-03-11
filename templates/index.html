@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HW1-2: Strategy Display and Value Evaluation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .control-panel {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .control-panel label {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+
+        .control-panel input[type="number"] {
+            font-size: 16px;
+            width: 60px;
+            margin-right: 10px;
+            padding: 2px 4px;
+        }
+
+        .control-panel button {
+            font-size: 16px;
+            padding: 6px 14px;
+            margin-right: 10px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .control-panel button:hover {
+            background-color: #ddd;
+        }
+
+        .matrices-container {
+            display: flex;
+            gap: 40px;
+        }
+
+        .matrix-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .matrix-wrapper h2 {
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        .grid-container {
+            display: inline-flex;
+            flex-direction: column;
+            border-top: 2px solid #005A9C;
+            border-left: 2px solid #005A9C;
+        }
+
+        .grid-row {
+            display: flex;
+        }
+
+        .grid-cell {
+            width: 65px;
+            height: 65px;
+            border-right: 2px solid #005A9C;
+            border-bottom: 2px solid #005A9C;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            user-select: none;
+            background-color: white;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .grid-cell.obstacle {
+            background-color: gray !important;
+        }
+
+        .grid-cell.terminal {
+            background-color: red !important;
+            color: white;
+        }
+
+        /* Arrows styling */
+        .arrows {
+            font-size: 24px;
+            font-weight: bold;
+            line-height: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>HW1-2: 策略顯示與價值評估</h1>
+
+    <div class="control-panel">
+        <label for="grid-size">Grid Size (n):</label>
+        <input type="number" id="grid-size" min="3" max="10" value="7">
+        <button id="init-btn">Initialize Grid</button>
+        <button id="random-btn">Random Policy</button>
+        <button id="evaluate-btn">Evaluate Strategy</button>
+    </div>
+
+    <p>Click on cells to toggle state: <strong>Normal &rarr; Obstacle (Gray) &rarr; Terminal (Red) &rarr;
+            Normal</strong></p>
+
+    <div class="matrices-container">
+        <div class="matrix-wrapper">
+            <h2>Value Matrix</h2>
+            <div id="value-grid" class="grid-container"></div>
+        </div>
+
+        <div class="matrix-wrapper">
+            <h2>Policy Matrix</h2>
+            <div id="policy-grid" class="grid-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let gridSize = 7;
+        let cellStates = {}; // key: "r,c", value: "normal", "obstacle", "terminal"
+        let cellPolicies = {}; // key: "r,c", value: ["up", "down", ...]
+
+        const stateCycle = {
+            "normal": "obstacle",
+            "obstacle": "terminal",
+            "terminal": "normal"
+        };
+
+        const arrowMap = {
+            "up": "↑",
+            "down": "↓",
+            "left": "←",
+            "right": "→"
+        };
+
+        document.getElementById('init-btn').addEventListener('click', initGrid);
+        document.getElementById('random-btn').addEventListener('click', generateRandomPolicy);
+        document.getElementById('evaluate-btn').addEventListener('click', evaluateStrategy);
+
+        function initGrid() {
+            gridSize = parseInt(document.getElementById('grid-size').value);
+            if (isNaN(gridSize) || gridSize < 3 || gridSize > 10) {
+                alert("Please enter a valid size between 3 and 10.");
+                return;
+            }
+
+            cellStates = {};
+            cellPolicies = {};
+
+            // Default setup similar to HW1-2 image (corners + center as gray obstacles/terminals)
+            const corners = [[0, 0], [0, gridSize - 1], [gridSize - 1, 0], [gridSize - 1, gridSize - 1]];
+            for (let [r, c] of corners) {
+                cellStates[`${r},${c}`] = "obstacle";
+            }
+            // Optional: a center obstacle if size >= 5
+            if (gridSize >= 5) {
+                const mid = Math.floor(gridSize / 2);
+                cellStates[`${mid},${mid}`] = "obstacle";
+            }
+
+            // Also need some terminal states to have meaningful values.
+            // Let's make corners terminal instead of obstacles? Actually, standard is either.
+            // But let's keep it editable.
+
+            renderGrids();
+        }
+
+        function renderGrids() {
+            const vGrid = document.getElementById('value-grid');
+            const pGrid = document.getElementById('policy-grid');
+            vGrid.innerHTML = '';
+            pGrid.innerHTML = '';
+
+            for (let r = 0; r < gridSize; r++) {
+                const vRow = document.createElement('div');
+                vRow.className = 'grid-row';
+                const pRow = document.createElement('div');
+                pRow.className = 'grid-row';
+
+                for (let c = 0; c < gridSize; c++) {
+                    const key = `${r},${c}`;
+                    const state = cellStates[key] || "normal";
+
+                    // Value cell
+                    const vCell = document.createElement('div');
+                    vCell.className = `grid-cell ${state}`;
+                    vCell.dataset.key = key;
+                    vCell.addEventListener('click', () => toggleCellState(key));
+
+                    if (state === "normal") {
+                        vCell.innerText = "0.0"; // default value
+                    }
+
+                    // Policy cell
+                    const pCell = document.createElement('div');
+                    pCell.className = `grid-cell ${state}`;
+                    pCell.dataset.key = key;
+                    pCell.addEventListener('click', () => toggleCellState(key));
+
+                    if (state === "normal" && cellPolicies[key]) {
+                        const arrows = cellPolicies[key].map(a => arrowMap[a]).join('');
+                        pCell.innerHTML = `<span class="arrows">${arrows}</span>`;
+                    }
+
+                    vRow.appendChild(vCell);
+                    pRow.appendChild(pCell);
+                }
+                vGrid.appendChild(vRow);
+                pGrid.appendChild(pRow);
+            }
+        }
+
+        function toggleCellState(key) {
+            const currentState = cellStates[key] || "normal";
+            const nextState = stateCycle[currentState];
+
+            if (nextState !== "normal") {
+                cellStates[key] = nextState;
+                delete cellPolicies[key]; // clear policy if obstacle/terminal
+            } else {
+                delete cellStates[key]; // normal state
+            }
+
+            renderGrids();
+        }
+
+        function generateRandomPolicy() {
+            const actions = ["up", "down", "left", "right"];
+            cellPolicies = {};
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const key = `${r},${c}`;
+                    const state = cellStates[key] || "normal";
+
+                    if (state === "normal") {
+                        // Randomly pick 1 to 4 actions
+                        // To match a random deterministic policy, pick exactly 1
+                        // To match the image (which has varying arrows), maybe pick a random number of actions 1-2
+                        const numActions = Math.floor(Math.random() * 2) + 1;
+                        let chosen = [];
+                        let available = [...actions];
+                        for (let i = 0; i < numActions; i++) {
+                            const idx = Math.floor(Math.random() * available.length);
+                            chosen.push(available[idx]);
+                            available.splice(idx, 1);
+                        }
+                        cellPolicies[key] = chosen;
+                    }
+                }
+            }
+            renderGrids();
+        }
+
+        async function evaluateStrategy() {
+            const obstacles = [];
+            const terminals = [];
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const key = `${r},${c}`;
+                    if (cellStates[key] === "obstacle") obstacles.push(key);
+                    if (cellStates[key] === "terminal") terminals.push(key);
+                }
+            }
+
+            const payload = {
+                n: gridSize,
+                obstacles: obstacles,
+                terminals: terminals,
+                policy: cellPolicies
+            };
+
+            try {
+                const response = await fetch('/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                // Update Value grid UI
+                const vCells = document.getElementById('value-grid').querySelectorAll('.grid-cell');
+                for (let r = 0; r < gridSize; r++) {
+                    for (let c = 0; c < gridSize; c++) {
+                        const key = `${r},${c}`;
+                        const state = cellStates[key] || "normal";
+
+                        // Find the corresponding cell
+                        const cell = Array.from(vCells).find(el => el.dataset.key === key);
+                        if (cell && state === "normal") {
+                            cell.innerText = data.values[r][c].toFixed(2);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error evaluating policy. Check backend console.");
+            }
+        }
+
+        // Initialize default UI 
+        initGrid();
+    </script>
+</body>
+
+</html>
