@@ -1,189 +1,586 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>HW1-2: Strategy Display and Value Evaluation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HW1-2: Policy Display and Value Evaluation</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary: #38bdf8;
+            --primary-hover: #0ea5e9;
+            --start-color: #10b981;
+            --terminal-color: #ef4444;
+            --obstacle-color: #475569;
+            --cell-size: 70px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            max-width: 800px;
         }
 
         h1 {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 20px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
         }
 
-        .control-panel {
-            margin-bottom: 20px;
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .container {
             display: flex;
+            flex-direction: row;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* Glass Panel Styling */
+        .panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .sidebar {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
 
-        .control-panel label {
-            font-size: 18px;
-            margin-right: 10px;
+        /* Brush Tools Selector */
+        .brush-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
 
-        .control-panel input[type="number"] {
-            font-size: 16px;
-            width: 60px;
-            margin-right: 10px;
-            padding: 2px 4px;
-        }
-
-        .control-panel button {
-            font-size: 16px;
-            padding: 6px 14px;
-            margin-right: 10px;
-            cursor: pointer;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .control-panel button:hover {
-            background-color: #ddd;
-        }
-
-        .matrices-container {
+        .brush-btn {
             display: flex;
-            gap: 40px;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.3);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .matrix-wrapper {
+        .brush-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .brush-btn.active {
+            border-color: var(--primary);
+            background: rgba(56, 189, 248, 0.15);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.start { background-color: var(--start-color); }
+        .dot.terminal { background-color: var(--terminal-color); }
+        .dot.obstacle { background-color: var(--obstacle-color); }
+        .dot.normal { background-color: #fff; border: 1px solid #94a3b8; }
+
+        /* Form Inputs */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .form-group input, .form-group select {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--primary);
+        }
+
+        /* Action Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.95;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Grid Matrices container */
+        .matrices-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .matrix-box {
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        .matrix-wrapper h2 {
-            font-size: 22px;
-            margin-bottom: 15px;
+        .matrix-box h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
         }
 
         .grid-container {
-            display: inline-flex;
+            display: flex;
             flex-direction: column;
-            border-top: 2px solid #005A9C;
-            border-left: 2px solid #005A9C;
+            background: rgba(15, 23, 42, 0.4);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
         .grid-row {
             display: flex;
         }
 
+        /* Individual Grid Cells */
         .grid-cell {
-            width: 65px;
-            height: 65px;
-            border-right: 2px solid #005A9C;
-            border-bottom: 2px solid #005A9C;
+            width: var(--cell-size);
+            height: var(--cell-size);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
             cursor: pointer;
             user-select: none;
-            background-color: white;
-            box-sizing: border-box;
             position: relative;
+            background: transparent;
+            transition: background-color 0.2s, border-color 0.2s;
         }
 
+        .grid-cell:last-child {
+            border-right: none;
+        }
+
+        .grid-row:last-child .grid-cell {
+            border-bottom: none;
+        }
+
+        /* Cell States */
         .grid-cell.obstacle {
-            background-color: gray !important;
+            background-color: var(--obstacle-color) !important;
+            color: #fff;
+        }
+        .grid-cell.obstacle::after {
+            content: 'X';
+            font-weight: 700;
+            font-size: 1.2rem;
+            opacity: 0.3;
         }
 
         .grid-cell.terminal {
-            background-color: red !important;
-            color: white;
+            background-color: var(--terminal-color) !important;
+            color: #fff;
+            font-weight: 700;
+        }
+        .grid-cell.terminal::after {
+            content: 'T';
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 0.7rem;
+            opacity: 0.8;
+            background: rgba(0,0,0,0.3);
+            padding: 1px 4px;
+            border-radius: 3px;
         }
 
-        /* Arrows styling */
-        .arrows {
-            font-size: 24px;
+        .grid-cell.start {
+            background-color: var(--start-color) !important;
+            color: #fff;
+            font-weight: 700;
+        }
+        .grid-cell.start::after {
+            content: 'S';
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 0.7rem;
+            opacity: 0.8;
+            background: rgba(0,0,0,0.3);
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        /* Interactive Arrow Overlay inside cells (Policy Matrix) */
+        .policy-cell-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .arrow-indicator {
+            position: absolute;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            cursor: pointer;
+            opacity: 0.15;
+            transition: all 0.2s;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .arrow-indicator:hover {
+            opacity: 0.7 !important;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .arrow-indicator.active {
+            opacity: 1;
+            color: var(--primary);
             font-weight: bold;
-            line-height: 1;
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+        }
+
+        .arrow-indicator.up {
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .arrow-indicator.down {
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .arrow-indicator.left {
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .arrow-indicator.right {
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Hover outline for Map editing in Value Grid */
+        #value-grid .grid-cell:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Info logs / Status Panel */
+        .info-panel {
+            margin-top: 10px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .info-panel strong {
+            color: var(--text-primary);
         }
     </style>
 </head>
-
 <body>
 
-    <h1>HW1-2: 策略顯示與價值評估</h1>
+    <header>
+        <h1>HW1-2: 策略顯示與價值評估</h1>
+        <p class="subtitle">互動式網格地圖編輯器，包含起點、終點、障礙物選取，以及正確的策略評估計算</p>
+    </header>
 
-    <div class="control-panel">
-        <label for="grid-size">Grid Size (n):</label>
-        <input type="number" id="grid-size" min="3" max="10" value="7">
-        <button id="init-btn">Initialize Grid</button>
-        <button id="random-btn">Random Policy</button>
-        <button id="evaluate-btn">Evaluate Strategy</button>
-    </div>
+    <div class="container">
+        
+        <!-- Sidebar Controls -->
+        <div class="sidebar panel">
+            
+            <div class="section-title">
+                <span>網格地圖刷</span>
+                <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">點擊左圖套用</span>
+            </div>
+            
+            <div class="brush-group">
+                <button class="brush-btn active" id="brush-start" onclick="setBrush('start')">
+                    <span class="dot start"></span>起點 (S)
+                </button>
+                <button class="brush-btn" id="brush-terminal" onclick="setBrush('terminal')">
+                    <span class="dot terminal"></span>終點 (T)
+                </button>
+                <button class="brush-btn" id="brush-obstacle" onclick="setBrush('obstacle')">
+                    <span class="dot obstacle"></span>障礙物 (O)
+                </button>
+                <button class="brush-btn" id="brush-normal" onclick="setBrush('normal')">
+                    <span class="dot normal"></span>清除 (N)
+                </button>
+            </div>
+            
+            <div class="section-title" style="margin-top: 15px;">
+                <span>MDP 環境參數</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="grid-size">網格尺寸 (n x n):</label>
+                <input type="number" id="grid-size" min="3" max="10" value="7">
+            </div>
 
-    <p>Click on cells to toggle state: <strong>Normal &rarr; Obstacle (Gray) &rarr; Terminal (Red) &rarr;
-            Normal</strong></p>
+            <div class="form-group">
+                <label for="param-gamma">折扣因子 (Discount Factor &gamma;):</label>
+                <input type="number" id="param-gamma" min="0" max="1" step="0.05" value="0.9">
+            </div>
 
-    <div class="matrices-container">
-        <div class="matrix-wrapper">
-            <h2>Value Matrix</h2>
-            <div id="value-grid" class="grid-container"></div>
+            <div class="form-group">
+                <label for="param-step-reward">步數懲罰 (Step Reward):</label>
+                <input type="number" id="param-step-reward" step="0.1" value="-1.0">
+            </div>
+
+            <div class="form-group">
+                <label for="param-terminal-reward">終點獎勵 (Terminal Reward):</label>
+                <input type="number" id="param-terminal-reward" step="1.0" value="10.0">
+            </div>
+
+            <div class="form-group">
+                <label for="param-transition">轉移機率類型 (Dynamics):</label>
+                <select id="param-transition">
+                    <option value="deterministic">確定性 (Deterministic)</option>
+                    <option value="stochastic">隨機性 (Stochastic, p=0.8)</option>
+                </select>
+            </div>
+
+            <button class="btn-primary" style="margin-top: 10px;" onclick="evaluateStrategy()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"></path></svg>
+                評估當前策略 (Evaluate)
+            </button>
+
+            <button class="btn-secondary" onclick="generateRandomPolicy()">
+                隨機生成策略
+            </button>
+
+            <button class="btn-secondary" onclick="applyGreedyPolicy()">
+                套用貪婪策略 (Make Greedy)
+            </button>
+
+            <button class="btn-secondary" onclick="initGrid()">
+                重置網格
+            </button>
+
+            <div class="info-panel" id="status-panel">
+                疊代次數: <strong>0</strong><br>
+                狀態狀態: <strong>準備就緒</strong>
+            </div>
         </div>
 
-        <div class="matrix-wrapper">
-            <h2>Policy Matrix</h2>
-            <div id="policy-grid" class="grid-container"></div>
+        <!-- Main Content (Grids) -->
+        <div class="main-content">
+            
+            <div class="panel">
+                <div class="matrices-grid">
+                    
+                    <!-- Value Matrix -->
+                    <div class="matrix-box">
+                        <h3>Value Matrix (價值矩陣)</h3>
+                        <div id="value-grid" class="grid-container"></div>
+                    </div>
+                    
+                    <!-- Policy Matrix -->
+                    <div class="matrix-box">
+                        <h3>Policy Matrix (策略矩陣)</h3>
+                        <div id="policy-grid" class="grid-container"></div>
+                    </div>
+
+                </div>
+            </div>
+            
         </div>
+
     </div>
 
     <script>
         let gridSize = 7;
-        let cellStates = {}; // key: "r,c", value: "normal", "obstacle", "terminal"
-        let cellPolicies = {}; // key: "r,c", value: ["up", "down", ...]
+        let cellStates = {}; // key: "r,c", value: "normal", "obstacle", "terminal", "start"
+        let cellPolicies = {}; // key: "r,c", value: ["up", "down", "left", "right"]
+        let activeBrush = 'start'; // 'start', 'terminal', 'obstacle', 'normal'
+        let lastGreedyPolicy = {};
 
-        const stateCycle = {
-            "normal": "obstacle",
-            "obstacle": "terminal",
-            "terminal": "normal"
-        };
-
-        const arrowMap = {
-            "up": "↑",
-            "down": "↓",
-            "left": "←",
-            "right": "→"
-        };
-
-        document.getElementById('init-btn').addEventListener('click', initGrid);
-        document.getElementById('random-btn').addEventListener('click', generateRandomPolicy);
-        document.getElementById('evaluate-btn').addEventListener('click', evaluateStrategy);
+        function setBrush(mode) {
+            activeBrush = mode;
+            document.querySelectorAll('.brush-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`brush-${mode}`).classList.add('active');
+        }
 
         function initGrid() {
             gridSize = parseInt(document.getElementById('grid-size').value);
             if (isNaN(gridSize) || gridSize < 3 || gridSize > 10) {
-                alert("Please enter a valid size between 3 and 10.");
+                alert("Please enter a valid grid size between 3 and 10.");
                 return;
             }
 
             cellStates = {};
             cellPolicies = {};
+            lastGreedyPolicy = {};
 
-            // Default setup similar to HW1-2 image (corners + center as gray obstacles/terminals)
-            const corners = [[0, 0], [0, gridSize - 1], [gridSize - 1, 0], [gridSize - 1, gridSize - 1]];
-            for (let [r, c] of corners) {
+            // Default standard homework setup: corners obstacle/terminal, center obstacle
+            // Let's set corners to obstacles (just like the original HW image)
+            const corners = [
+                [0, 0], [0, gridSize - 1], 
+                [gridSize - 1, 0], [gridSize - 1, gridSize - 1]
+            ];
+            corners.forEach(([r, c]) => {
                 cellStates[`${r},${c}`] = "obstacle";
-            }
-            // Optional: a center obstacle if size >= 5
+            });
+
+            // Center obstacle if size >= 5
             if (gridSize >= 5) {
                 const mid = Math.floor(gridSize / 2);
                 cellStates[`${mid},${mid}`] = "obstacle";
             }
 
-            // Also need some terminal states to have meaningful values.
-            // Let's make corners terminal instead of obstacles? Actually, standard is either.
-            // But let's keep it editable.
+            // Set default policy to uniform over all directions for normal cells
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const key = `${r},${c}`;
+                    if (!cellStates[key]) {
+                        cellPolicies[key] = ["up", "down", "left", "right"];
+                    }
+                }
+            }
 
             renderGrids();
+            updateStatus(0, "網格重置完畢，已預設角落與中心障礙物。");
         }
 
         function renderGrids() {
@@ -202,28 +599,56 @@
                     const key = `${r},${c}`;
                     const state = cellStates[key] || "normal";
 
-                    // Value cell
+                    // ==========================================
+                    // 1. Render Value Cell
+                    // ==========================================
                     const vCell = document.createElement('div');
                     vCell.className = `grid-cell ${state}`;
                     vCell.dataset.key = key;
-                    vCell.addEventListener('click', () => toggleCellState(key));
-
-                    if (state === "normal") {
-                        vCell.innerText = "0.0"; // default value
+                    vCell.id = `value-${r}-${c}`;
+                    
+                    if (state === "normal" || state === "start") {
+                        vCell.innerText = "0.00";
                     }
 
-                    // Policy cell
+                    // Click left cell to edit map layout using brush
+                    vCell.addEventListener('click', () => handleValueCellClick(r, c));
+                    vRow.appendChild(vCell);
+
+                    // ==========================================
+                    // 2. Render Policy Cell
+                    // ==========================================
                     const pCell = document.createElement('div');
                     pCell.className = `grid-cell ${state}`;
                     pCell.dataset.key = key;
-                    pCell.addEventListener('click', () => toggleCellState(key));
+                    pCell.id = `policy-${r}-${c}`;
 
-                    if (state === "normal" && cellPolicies[key]) {
-                        const arrows = cellPolicies[key].map(a => arrowMap[a]).join('');
-                        pCell.innerHTML = `<span class="arrows">${arrows}</span>`;
+                    if (state === "normal" || state === "start") {
+                        const container = document.createElement('div');
+                        container.className = 'policy-cell-container';
+
+                        const arrows = ['up', 'down', 'left', 'right'];
+                        const arrowChars = { 'up': '↑', 'down': '↓', 'left': '←', 'right': '→' };
+
+                        arrows.forEach(dir => {
+                            const indicator = document.createElement('div');
+                            indicator.className = `arrow-indicator ${dir}`;
+                            if (cellPolicies[key] && cellPolicies[key].includes(dir)) {
+                                indicator.classList.add('active');
+                            }
+                            indicator.innerText = arrowChars[dir];
+                            
+                            // Toggle individual arrow direction on click
+                            indicator.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                togglePolicyDirection(r, c, dir);
+                            });
+
+                            container.appendChild(indicator);
+                        });
+                        pCell.appendChild(container);
                     }
 
-                    vRow.appendChild(vCell);
                     pRow.appendChild(pCell);
                 }
                 vGrid.appendChild(vRow);
@@ -231,37 +656,68 @@
             }
         }
 
-        function toggleCellState(key) {
+        function handleValueCellClick(r, c) {
+            const key = `${r},${c}`;
             const currentState = cellStates[key] || "normal";
-            const nextState = stateCycle[currentState];
 
-            if (nextState !== "normal") {
-                cellStates[key] = nextState;
-                delete cellPolicies[key]; // clear policy if obstacle/terminal
+            if (activeBrush === "normal") {
+                delete cellStates[key];
+                // Initialize policy for newly normal cell
+                cellPolicies[key] = ["up", "down", "left", "right"];
+            } else if (activeBrush === "start") {
+                // Remove start state from any other cell to maintain uniqueness
+                for (let k in cellStates) {
+                    if (cellStates[k] === "start") {
+                        delete cellStates[k];
+                        cellPolicies[k] = ["up", "down", "left", "right"];
+                    }
+                }
+                cellStates[key] = "start";
+                cellPolicies[key] = ["up", "down", "left", "right"];
             } else {
-                delete cellStates[key]; // normal state
+                cellStates[key] = activeBrush;
+                delete cellPolicies[key]; // Obstacles and Terminals don't need policy
             }
 
             renderGrids();
         }
 
+        function togglePolicyDirection(r, c, direction) {
+            const key = `${r},${c}`;
+            if (!cellPolicies[key]) {
+                cellPolicies[key] = [];
+            }
+
+            const index = cellPolicies[key].indexOf(direction);
+            if (index > -1) {
+                cellPolicies[key].splice(index, 1);
+            } else {
+                cellPolicies[key].push(direction);
+            }
+
+            // Render arrow update immediately without full grid reload for smoothness
+            const cell = document.getElementById(`policy-${r}-${c}`);
+            if (cell) {
+                const indicator = cell.querySelector(`.arrow-indicator.${direction}`);
+                if (indicator) {
+                    indicator.classList.toggle('active');
+                }
+            }
+        }
+
         function generateRandomPolicy() {
             const actions = ["up", "down", "left", "right"];
-            cellPolicies = {};
-
             for (let r = 0; r < gridSize; r++) {
                 for (let c = 0; c < gridSize; c++) {
                     const key = `${r},${c}`;
                     const state = cellStates[key] || "normal";
 
-                    if (state === "normal") {
-                        // Randomly pick 1 to 4 actions
-                        // To match a random deterministic policy, pick exactly 1
-                        // To match the image (which has varying arrows), maybe pick a random number of actions 1-2
-                        const numActions = Math.floor(Math.random() * 2) + 1;
+                    if (state === "normal" || state === "start") {
+                        // Generate a random subset of 1 to 4 actions
+                        const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 actions for cleaner policy display
                         let chosen = [];
                         let available = [...actions];
-                        for (let i = 0; i < numActions; i++) {
+                        for (let i = 0; i < count; i++) {
                             const idx = Math.floor(Math.random() * available.length);
                             chosen.push(available[idx]);
                             available.splice(idx, 1);
@@ -271,17 +727,20 @@
                 }
             }
             renderGrids();
+            updateStatus(0, "隨機策略生成完畢。");
         }
 
         async function evaluateStrategy() {
             const obstacles = [];
             const terminals = [];
+            let start = null;
 
             for (let r = 0; r < gridSize; r++) {
                 for (let c = 0; c < gridSize; c++) {
                     const key = `${r},${c}`;
                     if (cellStates[key] === "obstacle") obstacles.push(key);
                     if (cellStates[key] === "terminal") terminals.push(key);
+                    if (cellStates[key] === "start") start = key;
                 }
             }
 
@@ -289,8 +748,15 @@
                 n: gridSize,
                 obstacles: obstacles,
                 terminals: terminals,
-                policy: cellPolicies
+                start: start,
+                policy: cellPolicies,
+                gamma: parseFloat(document.getElementById('param-gamma').value),
+                step_reward: parseFloat(document.getElementById('param-step-reward').value),
+                terminal_reward: parseFloat(document.getElementById('param-terminal-reward').value),
+                transition_type: document.getElementById('param-transition').value
             };
+
+            updateStatus(0, "正在評估策略...", true);
 
             try {
                 const response = await fetch('/evaluate', {
@@ -300,34 +766,83 @@
                 });
                 const data = await response.json();
 
-                // Update Value grid UI
-                if (data.policy) {
-                    cellPolicies = data.policy;
-                    renderGrids();
+                // Save greedy policy returned by the backend
+                lastGreedyPolicy = data.greedy_policy;
+
+                // Color-code heat map based on values
+                const values = data.values;
+                
+                // Find min/max values for scaling colors
+                let maxVal = -Infinity;
+                let minVal = Infinity;
+                for (let r = 0; r < gridSize; r++) {
+                    for (let c = 0; c < gridSize; c++) {
+                        const key = `${r},${c}`;
+                        if (cellStates[key] === "obstacle" || cellStates[key] === "terminal") continue;
+                        const v = values[r][c];
+                        if (v > maxVal) maxVal = v;
+                        if (v < minVal) minVal = v;
+                    }
                 }
 
-                const vCells = document.getElementById('value-grid').querySelectorAll('.grid-cell');
+                // Render value labels and backgrounds
                 for (let r = 0; r < gridSize; r++) {
                     for (let c = 0; c < gridSize; c++) {
                         const key = `${r},${c}`;
                         const state = cellStates[key] || "normal";
-
-                        // Find the corresponding cell
-                        const cell = Array.from(vCells).find(el => el.dataset.key === key);
-                        if (cell && state === "normal") {
-                            cell.innerText = data.values[r][c].toFixed(2);
+                        const cell = document.getElementById(`value-${r}-${c}`);
+                        
+                        if (cell && (state === "normal" || state === "start")) {
+                            const val = values[r][c];
+                            cell.innerText = val.toFixed(2);
+                            
+                            // Dynamic background color (heat map overlay)
+                            // Positive values get translucent green, negative get translucent red
+                            if (val > 0) {
+                                const ratio = maxVal > 0 ? val / maxVal : 0;
+                                cell.style.backgroundColor = `rgba(16, 185, 129, ${ratio * 0.4})`;
+                            } else if (val < 0) {
+                                const ratio = minVal < 0 ? val / minVal : 0;
+                                cell.style.backgroundColor = `rgba(239, 68, 68, ${ratio * 0.4})`;
+                            } else {
+                                cell.style.backgroundColor = 'transparent';
+                            }
                         }
                     }
                 }
+
+                updateStatus(data.iterations, "策略評估完成！價值矩陣已更新。");
             } catch (err) {
                 console.error(err);
-                alert("Error evaluating policy. Check backend console.");
+                updateStatus(0, "錯誤：無法連線至後端。");
+                alert("Error evaluating policy. Make sure backend app.py is running.");
             }
         }
 
-        // Initialize default UI 
+        function applyGreedyPolicy() {
+            if (!lastGreedyPolicy || Object.keys(lastGreedyPolicy).length === 0) {
+                alert("請先執行「評估當前策略」以計算出貪婪方向！");
+                return;
+            }
+
+            // Update policy map to match the computed greedy policy
+            for (let key in lastGreedyPolicy) {
+                cellPolicies[key] = [...lastGreedyPolicy[key]];
+            }
+            renderGrids();
+            updateStatus(0, "已套用計算出的貪婪策略 (Greedy Policy)。");
+        }
+
+        function updateStatus(iterations, text, loading = false) {
+            const panel = document.getElementById('status-panel');
+            panel.innerHTML = `
+                疊代次數: <strong>${iterations}</strong><br>
+                系統狀態: <strong style="color: ${loading ? 'var(--primary)' : 'inherit'}">${text}</strong>
+            `;
+        }
+
+        // Run default initialization 
         initGrid();
     </script>
 </body>
-
 </html>
